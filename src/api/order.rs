@@ -49,7 +49,28 @@ pub fn router() -> Router {
     Router::new()
         .route("/", get(get_orders).post(create_order))
         .route("/checkout", post(create_order_checkout))
+        .route("/checkout/asaas", post(create_order_checkout_asaas))
         .route("/:id", get(get_order).put(update_order).delete(delete_order))
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct AsaasCustomer {
+    pub name: String,
+    #[serde(rename = "cpfCnpj")]
+    pub cpf_cnpj: String,
+    pub email: String,
+    pub phone: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct AsaasCheckoutRequest {
+    pub cart_id: String,
+    pub store_id: Option<String>,
+    pub customer: AsaasCustomer,
+    pub billing_type: Option<String>,
+    pub due_date: Option<String>,
+    pub description: Option<String>,
+    pub notification_url: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -98,7 +119,19 @@ async fn create_order_checkout(Json(payload): Json<CheckoutRequest>) -> Json<Val
         Err(error) => return Json(json!({"error": error})),
     };
 
-    let preference = match create_mercado_pago_preference(&cart, &payload).await {
+    // Compute external_reference before calling preference so we can store it in the order
+    let external_reference = payload
+        .external_reference
+        .clone()
+        .unwrap_or_else(|| {
+            cart.get("_id")
+                .and_then(|v| v.get("$oid"))
+                .and_then(Value::as_str)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "cart_checkout".to_string())
+        });
+
+    let preference = match create_mercado_pago_preference(&cart, &payload, &external_reference).await {
         Ok(pref) => pref,
         Err(error) => return Json(json!({"error": error})),
     };
@@ -114,7 +147,7 @@ async fn create_order_checkout(Json(payload): Json<CheckoutRequest>) -> Json<Val
         return Json(json!({"error": "failed to resolve Mercado Pago checkout URL"}));
     }
 
-    let order_doc = build_order_from_cart(&cart, &payload, &preference);
+    let order_doc = build_order_from_cart(&cart, &payload, &preference, &external_reference);
     let order_insert = match mongo::insert_one("orders", order_doc).await {
         Ok(inserted) => inserted,
         Err(error) => return Json(json!({"error": error})),
@@ -134,6 +167,7 @@ async fn create_order_checkout(Json(payload): Json<CheckoutRequest>) -> Json<Val
 async fn create_mercado_pago_preference(
     cart: &Value,
     payload: &CheckoutRequest,
+    external_reference: &str,
 ) -> Result<MercadoPagoPreferenceResponse, String> {
     let access_token = env::var("MERCADO_PAGO_ACCESS_TOKEN")
         .map_err(|_| "MERCADO_PAGO_ACCESS_TOKEN is required".to_string())?;
@@ -161,11 +195,6 @@ async fn create_mercado_pago_preference(
             .unwrap_or("payer@example.com")
             .to_string(),
     });
-
-    let external_reference = payload
-        .external_reference
-        .clone()
-        .unwrap_or_else(|| cart.get("_id").map(|v| v.to_string()).unwrap_or_else(|| "cart_checkout".to_string()));
 
     let items = cart.get("items").cloned().unwrap_or_else(|| json!([]));
 
@@ -203,7 +232,12 @@ async fn create_mercado_pago_preference(
     serde_json::from_str::<MercadoPagoPreferenceResponse>(&text).map_err(|e| e.to_string())
 }
 
-fn build_order_from_cart(cart: &Value, payload: &CheckoutRequest, preference: &MercadoPagoPreferenceResponse) -> Document {
+fn build_order_from_cart(
+    cart: &Value,
+    payload: &CheckoutRequest,
+    preference: &MercadoPagoPreferenceResponse,
+    external_reference: &str,
+) -> Document {
     let shipping_address = cart
         .get("shipping")
         .and_then(|v| v.get("address"))
@@ -236,6 +270,8 @@ fn build_order_from_cart(cart: &Value, payload: &CheckoutRequest, preference: &M
             .unwrap_or_else(|| "default-store".to_string()),
         "items": cart.get("items").cloned().unwrap_or_else(|| json!([])),
         "payment_status": "pending",
+        "payment_provider": "mercadopago",
+        "external_reference": external_reference,
         "shipping_address": shipping_address,
         "billing_details": billing_details,
         "subtotal": cart.get("subtotal").and_then(Value::as_f64).unwrap_or(0.0),
@@ -245,6 +281,166 @@ fn build_order_from_cart(cart: &Value, payload: &CheckoutRequest, preference: &M
     });
 
     bson::to_document(&order_value).unwrap_or_default()
+}
+
+async fn create_order_checkout_asaas(Json(payload): Json<AsaasCheckoutRequest>) -> Json<Value> {
+    let cart = match mongo::find_one("carts", &payload.cart_id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return Json(json!({"error": "cart not found"})),
+        Err(error) => return Json(json!({"error": error})),
+    };
+
+    let sandbox = env::var("ASAAS_SANDBOX").unwrap_or_else(|_| "true".to_string());
+    let base_url = if sandbox == "true" {
+        env::var("ASAAS_SANDBOX_URL").unwrap_or_else(|_| "https://sandbox.asaas.com".to_string())
+    } else {
+        env::var("ASAAS_URL").unwrap_or_else(|_| "https://www.asaas.com".to_string())
+    };
+
+    let api_key = match env::var("ASAAS_API_KEY") {
+        Ok(k) => k,
+        Err(_) => return Json(json!({"error": "ASAAS_API_KEY is required"})),
+    };
+
+    let client = reqwest::Client::new();
+
+    // Upsert customer in Asaas
+    let customer_body = json!({
+        "name": payload.customer.name,
+        "cpfCnpj": payload.customer.cpf_cnpj,
+        "email": payload.customer.email,
+        "mobilePhone": payload.customer.phone.clone().unwrap_or_default(),
+    });
+
+    let customer_resp = match client
+        .post(format!("{}/api/v3/customers", base_url))
+        .header("access_token", &api_key)
+        .json(&customer_body)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => return Json(json!({"error": format!("asaas customer request failed: {e}")})),
+    };
+
+    let customer_json: Value = match customer_resp.json().await {
+        Ok(v) => v,
+        Err(e) => return Json(json!({"error": format!("asaas customer parse failed: {e}")})),
+    };
+
+    let asaas_customer_id = match customer_json.get("id").and_then(Value::as_str) {
+        Some(id) => id.to_string(),
+        None => return Json(json!({"error": "asaas did not return customer id", "details": customer_json})),
+    };
+
+    // Determine cart external_reference (cart _id)
+    let external_reference = cart
+        .get("_id")
+        .and_then(|v| v.get("$oid"))
+        .and_then(Value::as_str)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| payload.cart_id.clone());
+
+    let billing_type = payload.billing_type.clone().unwrap_or_else(|| "PIX".to_string());
+    let due_date = payload.due_date.clone().unwrap_or_else(|| "2025-12-31".to_string());
+    let description = payload.description.clone().unwrap_or_else(|| "Pedido omnistore".to_string());
+    let total = cart.get("total").and_then(Value::as_f64).unwrap_or(0.0);
+
+    let payment_body = json!({
+        "customer": asaas_customer_id,
+        "billingType": billing_type,
+        "value": total,
+        "dueDate": due_date,
+        "description": description,
+        "externalReference": external_reference,
+        "notificationEnabled": true,
+    });
+
+    let payment_resp = match client
+        .post(format!("{}/api/v3/payments", base_url))
+        .header("access_token", &api_key)
+        .json(&payment_body)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => return Json(json!({"error": format!("asaas payment request failed: {e}")})),
+    };
+
+    let payment_json: Value = match payment_resp.json().await {
+        Ok(v) => v,
+        Err(e) => return Json(json!({"error": format!("asaas payment parse failed: {e}")})),
+    };
+
+    let asaas_payment_id = match payment_json.get("id").and_then(Value::as_str) {
+        Some(id) => id.to_string(),
+        None => return Json(json!({"error": "asaas did not return payment id", "details": payment_json})),
+    };
+
+    let invoice_url = payment_json.get("invoiceUrl").and_then(Value::as_str).unwrap_or("").to_string();
+    let bank_slip_url = payment_json.get("bankSlipUrl").and_then(Value::as_str).unwrap_or("").to_string();
+    let pix_payload = payment_json
+        .get("pixQrCode")
+        .and_then(|v| v.get("payload"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let pix_encoded_image = payment_json
+        .get("pixQrCode")
+        .and_then(|v| v.get("encodedImage"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+
+    // Build order document
+    let shipping_address = cart
+        .get("shipping")
+        .and_then(|v| v.get("address"))
+        .and_then(Value::as_str)
+        .unwrap_or("not provided")
+        .to_string();
+
+    let order_value = json!({
+        "customer_id": cart.get("user_id").cloned().unwrap_or_else(|| json!(null)),
+        "store_id": payload.store_id.clone().unwrap_or_else(|| "default-store".to_string()),
+        "items": cart.get("items").cloned().unwrap_or_else(|| json!([])),
+        "payment_status": "pending",
+        "payment_provider": "asaas",
+        "external_reference": external_reference,
+        "asaas_payment_id": asaas_payment_id,
+        "shipping_address": shipping_address,
+        "billing_details": {
+            "customer": payload.customer.name,
+            "cpf_cnpj": payload.customer.cpf_cnpj,
+            "email": payload.customer.email,
+            "billing_type": billing_type,
+            "due_date": due_date,
+            "asaas_customer_id": asaas_customer_id,
+        },
+        "subtotal": cart.get("subtotal").and_then(Value::as_f64).unwrap_or(0.0),
+        "discount_total": cart.get("discount_total").and_then(Value::as_f64).unwrap_or(0.0),
+        "shipping_total": cart.get("shipping_total").and_then(Value::as_f64).unwrap_or(0.0),
+        "total": total,
+    });
+
+    let order_doc = bson::to_document(&order_value).unwrap_or_default();
+    let order_insert = match mongo::insert_one("orders", order_doc).await {
+        Ok(inserted) => inserted,
+        Err(error) => return Json(json!({"error": error})),
+    };
+
+    let _ = mongo::update_one("carts", &payload.cart_id, doc! {"status": "ordered"}).await;
+
+    Json(json!({
+        "data": {
+            "order_id": order_insert["inserted_id"].to_string(),
+            "payment_id": asaas_payment_id,
+            "invoice_url": invoice_url,
+            "bank_slip_url": bank_slip_url,
+            "pix_payload": pix_payload,
+            "pix_encoded_image": pix_encoded_image,
+        }
+    }))
 }
 
 async fn get_orders(Query(filter): Query<OrderFilter>) -> Json<Value> {
