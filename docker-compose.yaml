@@ -1,5 +1,10 @@
 version: '3.9'
 
+# ========================================
+# 🏪 OmniStore - Docker Compose
+# Otimizado para VPS com 1-2GB RAM
+# ========================================
+
 services:
   app:
     build:
@@ -21,15 +26,47 @@ services:
       - MINIO_ACCESS_KEY
       - MINIO_SECRET_KEY
     restart: unless-stopped
+    # Limites de memória para VPS pequeno
+    deploy:
+      resources:
+        limits:
+          memory: 512M  # Máximo que pode usar
+        reservations:
+          memory: 256M  # Mínimo garantido
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   mongo:
     image: mongo:7.0
     container_name: omnistore-mongo
     ports:
-      - '27018:27017'
+      - '27018:27017'  # Porta externa 27018 para evitar conflito
     volumes:
       - mongo-data:/data/db
+    # Otimizações para VPS com pouca RAM
+    command: >
+      mongod 
+      --wiredTigerCacheSizeGB 0.25
+      --bind_ip_all
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-changeme}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
     image: redis:7-alpine
@@ -38,7 +75,24 @@ services:
       - '6379:6379'
     volumes:
       - redis-data:/data
+    # Configurações para economizar RAM
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   minio:
     image: minio/minio:latest
@@ -47,16 +101,44 @@ services:
       - .env
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '9000:9000'  # API
+      - '9001:9001'  # Console Web
     volumes:
       - minio-data:/data
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   mongo-data:
+    driver: local
   redis-data:
+    driver: local
   minio-data:
+    driver: local
+
+# ========================================
+# 📊 USO DE RECURSOS ESTIMADO:
+# ========================================
+# App:    256-512 MB
+# Mongo:  256-512 MB  
+# Redis:   64-128 MB
+# MinIO:  128-256 MB
+# --------------
+# Total:  ~700MB-1.4GB
+#
+# ✅ Funciona bem em VPS com 1GB RAM + swap
+# 🚀 Recomendado: 2GB RAM para conforto
+# ========================================

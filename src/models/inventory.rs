@@ -1,14 +1,18 @@
 use mongodb::bson::DateTime;
 use serde::{Deserialize, Serialize};
 use super::field::Metadata;
-use super::warehouse::Warehouse;
 
+/// Estoque simplificado (single-warehouse)
 #[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Inventory {
+    /// Quantidade disponível em estoque
     pub quantity: i64,
+    
+    /// Quantidade reservada (em carrinhos)
     pub reserved: i64,
-    pub warehouse: Warehouse,
+    
+    /// Permite vender mesmo sem estoque
     pub sell_without_stock: bool,
 
     #[serde(default)]

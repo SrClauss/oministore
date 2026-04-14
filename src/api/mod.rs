@@ -30,10 +30,10 @@ pub fn router() -> Router {
         .nest("/orders", order::router())
         .nest("/products", product::router())
         .nest("/shipping", shipping::router())
-        .nest("/stores", store::router())
+        .nest("/store", store::router())  // Singular - config única
         .nest("/uploads", upload::router())
         .nest("/users", user::router())
-        .nest("/warehouses", warehouse::router())
+        .nest("/warehouses", warehouse::router())  // Manter por enquanto para compatibilidade
         .nest("/audit-logs", audit_log::router())
         .nest("/webhooks", webhooks::router())
         .nest("/admin", admin::router())

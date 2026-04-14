@@ -1,87 +1,87 @@
-use axum::{extract::{Path, Query}, response::Json, routing::get, Router};
-use mongodb::bson::{self, doc, Document};
+use axum::{response::Json, routing::get, Router};
+use mongodb::bson::{self, doc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::services::mongo;
 
-#[derive(Deserialize, Serialize)]
-pub struct StoreFilter {
-    pub name: Option<String>,
-    pub active: Option<bool>,
-}
+const STORE_COLLECTION: &str = "store_config";
 
 #[derive(Deserialize, Serialize)]
-pub struct StorePayload {
-    pub name: String,
-    pub url: String,
-    pub currency: String,
-    pub active: bool,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct StoreUpdate {
+pub struct StoreConfigUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub logo_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency: Option<String>,
+    pub theme_colors: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub active: Option<bool>,
+    pub gateway_keys: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
 }
 
 pub fn router() -> Router {
     Router::new()
-        .route("/", get(get_stores).post(create_store))
-        .route("/:id", get(get_store).put(update_store).delete(delete_store))
+        .route("/", get(get_store_config).put(update_store_config))
 }
 
-async fn get_stores(Query(filter): Query<StoreFilter>) -> Json<Value> {
-    let mut query = Document::new();
-    if let Some(value) = filter.name {
-        query.insert("name", value);
-    }
-    if let Some(value) = filter.active {
-        query.insert("active", value);
-    }
-    match mongo::find_all("stores", query).await {
-        Ok(items) => Json(json!({"data": items})),
+/// GET /api/store - Retorna a configuração única da loja
+async fn get_store_config() -> Json<Value> {
+    // Busca o primeiro (e único) documento de configuração
+    match mongo::find_all(STORE_COLLECTION, doc! {}).await {
+        Ok(items) if !items.is_empty() => Json(json!({"data": items[0].clone()})),
+        Ok(_) => {
+            // Se não existe, retorna config padrão
+            Json(json!({
+                "data": {
+                    "name": "Minha Loja",
+                    "logo_url": null,
+                    "theme_colors": {},
+                    "gateway_keys": {},
+                    "metadata": {},
+                    "created_at": null,
+                    "updated_at": null
+                },
+                "message": "Using default config. Update to save your settings."
+            }))
+        }
         Err(error) => Json(json!({"error": error})),
     }
 }
 
-async fn get_store(Path(id): Path<String>) -> Json<Value> {
-    match mongo::find_one("stores", &id).await {
-        Ok(Some(item)) => Json(json!({"data": item})),
-        Ok(None) => Json(json!({"error": "not found"})),
-        Err(error) => Json(json!({"error": error})),
-    }
-}
-
-async fn create_store(Json(payload): Json<StorePayload>) -> Json<Value> {
-    let document = bson::to_document(&payload).unwrap_or_default();
-    match mongo::insert_one("stores", document).await {
-        Ok(result) => Json(json!({"data": result})),
-        Err(error) => Json(json!({"error": error})),
-    }
-}
-
-async fn update_store(Path(id): Path<String>, Json(payload): Json<StoreUpdate>) -> Json<Value> {
+/// PUT /api/store - Atualiza a configuração única da loja
+async fn update_store_config(Json(payload): Json<StoreConfigUpdate>) -> Json<Value> {
     let updates = bson::to_document(&payload).unwrap_or_default();
     if updates.is_empty() {
         return Json(json!({"error": "no fields to update"}));
     }
-    match mongo::update_one("stores", &id, updates).await {
-        Ok(Some(item)) => Json(json!({"data": item})),
-        Ok(None) => Json(json!({"error": "not found"})),
-        Err(error) => Json(json!({"error": error})),
-    }
-}
 
-async fn delete_store(Path(id): Path<String>) -> Json<Value> {
-    match mongo::delete_one("stores", &id).await {
-        Ok(count) => Json(json!({"deleted_count": count})),
+    // Verifica se já existe uma config
+    match mongo::find_all(STORE_COLLECTION, doc! {}).await {
+        Ok(items) if !items.is_empty() => {
+            // Atualiza a config existente
+            if let Some(id_value) = items[0].get("_id") {
+                if let Some(id_str) = id_value.as_str() {
+                    match mongo::update_one(STORE_COLLECTION, id_str, updates).await {
+                        Ok(Some(item)) => Json(json!({"data": item})),
+                        Ok(None) => Json(json!({"error": "not found"})),
+                        Err(error) => Json(json!({"error": error})),
+                    }
+                } else {
+                    Json(json!({"error": "invalid id format"}))
+                }
+            } else {
+                Json(json!({"error": "no id found"}))
+            }
+        }
+        Ok(_) => {
+            // Cria nova config se não existe
+            match mongo::insert_one(STORE_COLLECTION, updates).await {
+                Ok(result) => Json(json!({"data": result, "message": "Store config created"})),
+                Err(error) => Json(json!({"error": error})),
+            }
+        }
         Err(error) => Json(json!({"error": error})),
     }
 }
