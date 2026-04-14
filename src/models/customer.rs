@@ -21,6 +21,9 @@ pub struct Customer {
     pub id: Option<ObjectId>,
     pub name: String,
     pub email: String,
+    /// Firebase UID linking this customer to a Firebase Auth account.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub firebase_uid: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phone: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -29,6 +29,11 @@ pub fn doc_to_json(doc: Document) -> Value {
     serde_json::to_value(doc).unwrap_or_else(|_| json!(null))
 }
 
+pub async fn find_one_by_filter(collection: &str, filter: Document) -> Result<Option<Value>, String> {
+    let coll = database().await.collection::<Document>(collection);
+    coll.find_one(filter, None).await.map_err(|e| e.to_string()).map(|opt| opt.map(doc_to_json))
+}
+
 pub async fn find_all(collection: &str, filter: Document) -> Result<Vec<Value>, String> {
     let coll = database().await.collection::<Document>(collection);
     let mut cursor = coll.find(filter, None).await.map_err(|e| e.to_string())?;

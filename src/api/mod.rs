@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod audit_log;
+pub mod auth;
 pub mod cart;
 pub mod cart_item;
 pub mod category;
@@ -20,6 +21,7 @@ use axum::Router;
 
 pub fn router() -> Router {
     Router::new()
+        .nest("/auth", auth::router())
         .nest("/carts", cart::router())
         .nest("/cart-items", cart_item::router())
         .nest("/categories", category::router())
