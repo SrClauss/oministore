@@ -11,15 +11,20 @@ API de e-commerce headless desenvolvida em Rust com Axum, MongoDB, Redis e MinIO
 
 ## 📚 Documentação
 
-- **[📖 DOCS_INDEX.md](DOCS_INDEX.md)** - Índice e guia de navegação dos documentos
-- **[⚡ QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Referência rápida de comandos
-- **[📋 README.md](README.md)** - Este arquivo (Visão geral e setup)
-- **[📊 EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** - Resumo executivo e status
-- **[🔍 DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md)** - Status detalhado por componente
-- **[✅ CHECKLIST.md](CHECKLIST.md)** - Checklist de tarefas pendentes
-- **[🏗️ ARCHITECTURE.md](ARCHITECTURE.md)** - Diagramas de arquitetura
+- **[📖 Índice de Docs](docs/INDEX.md)** - Navegação completa da documentação
+- **[📊 Resumo Executivo](docs/EXECUTIVE_SUMMARY.md)** - Status do projeto
 
-> 💡 **Novo no projeto?** Comece com [DOCS_INDEX.md](DOCS_INDEX.md) para saber por onde começar!
+### 📖 Guias Práticos
+- **[🎯 Setup Simplificado](docs/guides/SIMPLE_SETUP.md)** - Para não-técnicos/MEIs
+- **[🚀 Deploy em VPS](docs/guides/DEPLOYMENT_GUIDE.md)** - Produção em servidor
+- **[⚡ Referência Rápida](docs/guides/QUICK_REFERENCE.md)** - Comandos úteis
+
+### 🔧 Documentação Técnica
+- **[🏗️ Arquitetura](docs/technical/ARCHITECTURE.md)** - Diagramas do sistema
+- **[🔍 Status de Desenvolvimento](docs/technical/DEVELOPMENT_STATUS.md)** - Detalhes por componente
+- **[✅ Checklist](docs/technical/CHECKLIST.md)** - Tarefas pendentes
+
+> 💡 **Novo no projeto?** Comece com [docs/INDEX.md](docs/INDEX.md) para saber por onde começar!
 
 ## 📋 Visão Geral
 

@@ -159,7 +159,7 @@ Faltando: - Structured logging
 - **MongoDB** (database)
 - **Redis** (cache)
 - **Tokio** (async runtime)
-- **AWS SDK S3** (storage)
+- **MinIO** (storage S3-compatible, self-hosted)
 - **Serde** (serialization)
 
 ### Cobertura
@@ -322,10 +322,10 @@ Faltando: - Structured logging
 
 ## 🔗 Documentos Relacionados
 
-1. **[README.md](README.md)** - Setup e introdução
-2. **[DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md)** - Status detalhado por componente
-3. **[CHECKLIST.md](CHECKLIST.md)** - Checklist de tarefas
-4. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Diagramas de arquitetura
+1. **[README.md](../README.md)** - Setup e introdução
+2. **[DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md)** - Status detalhado por componente
+3. **[CHECKLIST.md](technical/CHECKLIST.md)** - Checklist de tarefas
+4. **[ARCHITECTURE.md](technical/ARCHITECTURE.md)** - Diagramas de arquitetura
 
 ---
 

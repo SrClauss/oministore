@@ -25,9 +25,8 @@ Documento de acompanhamento rápido do progresso de desenvolvimento.
 - [x] Integração MinIO/S3
 - [x] Docker Compose
 - [x] Dockerfile
-- [ ] CI/CD Pipeline
-- [ ] Kubernetes manifests
-- [ ] Health checks
+- [ ] CI/CD Pipeline (GitHub Actions)
+- [ ] Health checks avançados
 - [ ] Graceful shutdown
 
 ### Serviços
@@ -57,14 +56,11 @@ Documento de acompanhamento rápido do progresso de desenvolvimento.
 
 ### Autenticação
 - [x] Admin token validation
-- [ ] JWT authentication
-- [ ] OAuth2 (Google)
-- [ ] OAuth2 (Facebook)
-- [ ] Password hashing (bcrypt)
-- [ ] Session management
-- [ ] Refresh tokens
-- [ ] 2FA
-- [ ] API keys
+- [ ] Firebase Auth (verificação de token no backend) — apenas Firebase, sem Facebook
+- [ ] Middleware de autenticação (extrair uid do Firebase token)
+- [ ] Associar usuário Firebase ao modelo Customer
+- [ ] Refresh token (gerenciado pelo Firebase SDK)
+- [ ] API keys para integrações externas
 
 ### Autorização
 - [x] UserRole enum
@@ -197,11 +193,9 @@ Documento de acompanhamento rápido do progresso de desenvolvimento.
 ### Usuários
 - [x] CRUD completo
 - [x] Roles (Admin/Manager/Staff)
-- [ ] Password hashing
-- [ ] Login endpoint
-- [ ] Logout endpoint
-- [ ] Change password
-- [ ] Reset password
+- [ ] Associar Firebase UID ao User
+- [ ] Sincronizar perfil com Firebase Auth
+- [ ] Endpoint de perfil autenticado (GET /api/me)
 
 ### Uploads
 - [x] POST /presign
@@ -365,24 +359,24 @@ Documento de acompanhamento rápido do progresso de desenvolvimento.
 ### Containers
 - [x] Dockerfile
 - [x] docker-compose.yaml
-- [ ] Health checks
-- [ ] Resource limits
+- [x] Resource limits (memória otimizada para VPS)
+- [ ] Health checks completos
 - [ ] Multi-stage builds otimizados
 - [ ] Security scanning
 
-### Orchestration
-- [ ] Kubernetes manifests
-- [ ] Helm charts
-- [ ] Auto-scaling
-- [ ] Load balancing
-- [ ] Service mesh
+### Deploy e VPS
+- [ ] Script de deploy automatizado
+- [ ] Nginx reverse proxy configurado
+- [ ] SSL/HTTPS (Let's Encrypt)
+- [ ] Backup automático (MongoDB)
+- [ ] Monitoramento básico (logs, métricas)
+- [ ] Documentação de rollback
 
 ### Infrastructure
-- [ ] Terraform / CloudFormation
 - [ ] DNS setup
 - [ ] SSL certificates
-- [ ] CDN setup
-- [ ] Object storage (S3)
+- [ ] Object storage (MinIO/S3)
+- [ ] Backup storage (externo)
 - [ ] Database managed service
 
 ### Monitoring
@@ -482,8 +476,9 @@ Documento de acompanhamento rápido do progresso de desenvolvimento.
 ## ✅ Prioridades Imediatas
 
 ### P0 - Crítico (Bloqueador para produção)
-- [ ] Implementar JWT authentication
-- [ ] Hash de senhas (bcrypt)
+- [ ] Integrar Firebase Auth (verificação de ID token)
+- [ ] Middleware de autenticação no backend
+- [ ] Associar Firebase UID ao Customer
 - [ ] Validar estoque ao vender
 - [ ] Error handling consistente
 - [ ] Health check endpoint

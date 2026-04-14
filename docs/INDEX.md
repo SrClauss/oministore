@@ -9,36 +9,36 @@ Guia rápido de navegação pela documentação do projeto.
 ### Você é...
 
 #### 🛍️ **MEI / Dono de Loja (Não-Técnico)**
-1. Comece com [SIMPLE_SETUP.md](SIMPLE_SETUP.md) - Setup passo a passo ilustrado
-2. Veja [README.md](README.md) - Entenda o que é o sistema
-3. Consulte [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) quando estiver pronto para produção
+1. Comece com [SIMPLE_SETUP.md](guides/SIMPLE_SETUP.md) - Setup passo a passo ilustrado
+2. Veja [README.md](../README.md) - Entenda o que é o sistema
+3. Consulte [DEPLOYMENT_GUIDE.md](guides/DEPLOYMENT_GUIDE.md) quando estiver pronto para produção
 
 #### 👨‍💻 **Desenvolvedor Novo no Projeto**
-1. Comece com [README.md](README.md) - Setup e introdução
+1. Comece com [README.md](../README.md) - Setup e introdução
 2. Leia [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Entenda o estado atual
-3. Veja [ARCHITECTURE.md](ARCHITECTURE.md) - Compreenda a arquitetura
-4. Use [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Detalhes de implementação
+3. Veja [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Compreenda a arquitetura
+4. Use [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Detalhes de implementação
 
 #### 📊 **Product Manager / Stakeholder**
 1. Leia [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Visão geral rápida
-2. Consulte [CHECKLIST.md](CHECKLIST.md) - O que falta fazer
-3. Veja [README.md](README.md) - Features implementadas
+2. Consulte [CHECKLIST.md](technical/CHECKLIST.md) - O que falta fazer
+3. Veja [README.md](../README.md) - Features implementadas
 
 #### 🚀 **DevOps / SRE**
-1. Comece com [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Deploy em VPS
-2. Veja [ARCHITECTURE.md](ARCHITECTURE.md) - Infraestrutura
-3. Consulte [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Requisitos de produção
+1. Comece com [DEPLOYMENT_GUIDE.md](guides/DEPLOYMENT_GUIDE.md) - Deploy em VPS
+2. Veja [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Infraestrutura
+3. Consulte [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Requisitos de produção
 
 #### 🧪 **QA / Tester**
 1. Leia [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Features prontas
-2. Use [CHECKLIST.md](CHECKLIST.md) - O que testar
-3. Consulte [README.md](README.md) - Endpoints da API
+2. Use [CHECKLIST.md](technical/CHECKLIST.md) - O que testar
+3. Consulte [README.md](../README.md) - Endpoints da API
 
 ---
 
 ## 📖 Descrição dos Documentos
 
-### [README.md](README.md)
+### [README.md](../README.md)
 **Tipo**: Introdução Geral  
 **Tamanho**: ~500 linhas  
 **Conteúdo**:
@@ -72,7 +72,7 @@ Guia rápido de navegação pela documentação do projeto.
 
 ---
 
-### [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md)
+### [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md)
 **Tipo**: Documentação Técnica Detalhada  
 **Tamanho**: ~800 linhas  
 **Conteúdo**:
@@ -96,7 +96,7 @@ Guia rápido de navegação pela documentação do projeto.
 
 ---
 
-### [CHECKLIST.md](CHECKLIST.md)
+### [CHECKLIST.md](technical/CHECKLIST.md)
 **Tipo**: Lista de Tarefas  
 **Tamanho**: ~600 linhas  
 **Conteúdo**:
@@ -121,7 +121,7 @@ Guia rápido de navegação pela documentação do projeto.
 
 ---
 
-### [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+### [DEPLOYMENT_GUIDE.md](guides/DEPLOYMENT_GUIDE.md)
 **Tipo**: Guia de Implantação Técnico  
 **Tamanho**: ~400 linhas  
 **Conteúdo**:
@@ -140,7 +140,7 @@ Guia rápido de navegação pela documentação do projeto.
 
 ---
 
-### [SIMPLE_SETUP.md](SIMPLE_SETUP.md)
+### [SIMPLE_SETUP.md](guides/SIMPLE_SETUP.md)
 **Tipo**: Tutorial para Não-Técnicos  
 **Tamanho**: ~350 linhas  
 **Conteúdo**:
@@ -159,7 +159,7 @@ Guia rápido de navegação pela documentação do projeto.
 
 ---
 
-### [ARCHITECTURE.md](ARCHITECTURE.md)
+### [ARCHITECTURE.md](technical/ARCHITECTURE.md)
 **Tipo**: Documentação de Arquitetura  
 **Tamanho**: ~600 linhas  
 **Conteúdo**:
@@ -186,53 +186,53 @@ Guia rápido de navegação pela documentação do projeto.
 ### Quero saber sobre...
 
 #### **Setup e Instalação**
-→ [README.md](README.md) - Seção "Configuração e Instalação"
+→ [README.md](../README.md) - Seção "Configuração e Instalação"
 
 #### **Status do Projeto**
 → [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Seção "Progresso por Categoria"
 
 #### **Endpoints da API**
-→ [README.md](README.md) - Seção "Endpoints da API"  
-→ [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Seção "APIs REST"
+→ [README.md](../README.md) - Seção "Endpoints da API"  
+→ [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Seção "APIs REST"
 
 #### **O que está faltando**
 → [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Seção "O Que Está Faltando"  
-→ [CHECKLIST.md](CHECKLIST.md) - Qualquer item com `[ ]`
+→ [CHECKLIST.md](technical/CHECKLIST.md) - Qualquer item com `[ ]`
 
 #### **Arquitetura do sistema**
-→ [ARCHITECTURE.md](ARCHITECTURE.md) - Todos os diagramas
+→ [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Todos os diagramas
 
 #### **Integrações de pagamento**
-→ [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Seção "Integrações de Pagamento"  
-→ [ARCHITECTURE.md](ARCHITECTURE.md) - Seção "Processamento de Webhooks"
+→ [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Seção "Integrações de Pagamento"  
+→ [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Seção "Processamento de Webhooks"
 
 #### **Como fazer deploy**
-→ [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Guia completo de deploy em VPS  
-→ [SIMPLE_SETUP.md](SIMPLE_SETUP.md) - Setup passo a passo para iniciantes  
+→ [DEPLOYMENT_GUIDE.md](guides/DEPLOYMENT_GUIDE.md) - Guia completo de deploy em VPS  
+→ [SIMPLE_SETUP.md](guides/SIMPLE_SETUP.md) - Setup passo a passo para iniciantes  
 → [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Seção "Checklist de Deploy"  
-→ [README.md](README.md) - Seção "Configuração e Instalação"
+→ [README.md](../README.md) - Seção "Configuração e Instalação"
 
 #### **Roadmap e prioridades**
 → [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Seção "Roadmap Mínimo"  
-→ [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Seção "Roadmap Sugerido"  
-→ [CHECKLIST.md](CHECKLIST.md) - Seção "Prioridades Imediatas"
+→ [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Seção "Roadmap Sugerido"  
+→ [CHECKLIST.md](technical/CHECKLIST.md) - Seção "Prioridades Imediatas"
 
 #### **Testes**
-→ [CHECKLIST.md](CHECKLIST.md) - Seção "Testes"  
+→ [CHECKLIST.md](technical/CHECKLIST.md) - Seção "Testes"  
 → [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Seção "Sprint 3: Testes Básicos"
 
 #### **Segurança**
-→ [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Seção "Autenticação & Autorização"  
-→ [CHECKLIST.md](CHECKLIST.md) - Seção "Segurança & Autenticação"  
+→ [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Seção "Autenticação & Autorização"  
+→ [CHECKLIST.md](technical/CHECKLIST.md) - Seção "Segurança & Autenticação"  
 → [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Seção "Sprint 1: Segurança Básica"
 
 #### **Cache strategy**
-→ [ARCHITECTURE.md](ARCHITECTURE.md) - Seção "Estratégia de Cache"  
-→ [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Seção "Cache Service"
+→ [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Seção "Estratégia de Cache"  
+→ [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Seção "Cache Service"
 
 #### **Upload de arquivos**
-→ [ARCHITECTURE.md](ARCHITECTURE.md) - Seção "Sistema de Arquivos"  
-→ [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Seção "Uploads & Storage"
+→ [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Seção "Sistema de Arquivos"  
+→ [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Seção "Uploads & Storage"
 
 ---
 
@@ -252,30 +252,30 @@ Guia rápido de navegação pela documentação do projeto.
 
 ### Implementar uma nova feature
 
-1. ✅ Verificar se já está na [CHECKLIST.md](CHECKLIST.md)
-2. 📖 Ler seção relacionada em [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md)
-3. 🏗️ Ver arquitetura em [ARCHITECTURE.md](ARCHITECTURE.md)
+1. ✅ Verificar se já está na [CHECKLIST.md](technical/CHECKLIST.md)
+2. 📖 Ler seção relacionada em [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md)
+3. 🏗️ Ver arquitetura em [ARCHITECTURE.md](technical/ARCHITECTURE.md)
 4. 💻 Implementar seguindo padrões do código
-5. ✅ Marcar como completo em [CHECKLIST.md](CHECKLIST.md)
-6. 📝 Atualizar [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) se necessário
+5. ✅ Marcar como completo em [CHECKLIST.md](technical/CHECKLIST.md)
+6. 📝 Atualizar [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) se necessário
 
 ### Planejar uma sprint
 
 1. 📊 Revisar [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) para contexto
-2. 🎯 Ver prioridades em [CHECKLIST.md](CHECKLIST.md)
-3. 📋 Selecionar tarefas de [CHECKLIST.md](CHECKLIST.md)
+2. 🎯 Ver prioridades em [CHECKLIST.md](technical/CHECKLIST.md)
+3. 📋 Selecionar tarefas de [CHECKLIST.md](technical/CHECKLIST.md)
 4. ⏱️ Estimar com base em [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)
 5. 📝 Criar issues/tickets
 
 ### Onboarding de novo dev
 
 **Dia 1**:
-1. [README.md](README.md) - Setup ambiente local
+1. [README.md](../README.md) - Setup ambiente local
 2. [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md) - Entender o projeto
 
 **Dia 2**:
-3. [ARCHITECTURE.md](ARCHITECTURE.md) - Estudar arquitetura
-4. [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) - Detalhes técnicos
+3. [ARCHITECTURE.md](technical/ARCHITECTURE.md) - Estudar arquitetura
+4. [DEVELOPMENT_STATUS.md](technical/DEVELOPMENT_STATUS.md) - Detalhes técnicos
 
 **Dia 3+**:
 5. [CHECKLIST.md](CHECKLIST.md) - Pegar primeira tarefa
