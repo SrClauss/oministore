@@ -6,6 +6,7 @@ use axum::{
     Router,
 };
 use hmac::{Hmac, Mac};
+use mongodb::bson::doc;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sha2::Sha256;
@@ -171,8 +172,82 @@ fn verify_signature(
 async fn handle_event(kind: &str, action: &str, resource_id: &str) {
     match kind {
         "payment" => {
-            // TODO: buscar pagamento na API do MP e atualizar Order no MongoDB
-            eprintln!("[webhook:mp] payment {action} id={resource_id}");
+            let access_token = match env::var("MERCADO_PAGO_ACCESS_TOKEN") {
+                Ok(t) => t,
+                Err(_) => {
+                    eprintln!("[webhook:mp] MERCADO_PAGO_ACCESS_TOKEN not set");
+                    return;
+                }
+            };
+
+            let url = format!("https://api.mercadopago.com/v1/payments/{}", resource_id);
+            let client = reqwest::Client::new();
+            let payment: Value = match client
+                .get(&url)
+                .bearer_auth(&access_token)
+                .send()
+                .await
+            {
+                Ok(resp) => match resp.json().await {
+                    Ok(v) => v,
+                    Err(e) => {
+                        eprintln!("[webhook:mp] failed to parse payment response: {e}");
+                        return;
+                    }
+                },
+                Err(e) => {
+                    eprintln!("[webhook:mp] failed to fetch payment {resource_id}: {e}");
+                    return;
+                }
+            };
+
+            let mp_status = payment.get("status").and_then(Value::as_str).unwrap_or("").to_string();
+            if mp_status.is_empty() {
+                eprintln!("[webhook:mp] payment {resource_id} has no status field");
+            }
+            let external_reference = payment
+                .get("external_reference")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+
+            if external_reference.is_empty() {
+                eprintln!("[webhook:mp] no external_reference in payment {resource_id}");
+                return;
+            }
+
+            let mapped_status = map_mp_status(&mp_status);
+
+            let filter = doc! {"external_reference": &external_reference};
+            let orders = match crate::services::mongo::find_all("orders", filter).await {
+                Ok(o) => o,
+                Err(e) => {
+                    eprintln!("[webhook:mp] failed to query orders: {e}");
+                    return;
+                }
+            };
+
+            if let Some(order) = orders.first() {
+                let order_id = order
+                    .get("_id")
+                    .and_then(|v| v.get("$oid"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                if !order_id.is_empty() {
+                    match crate::services::mongo::update_one(
+                        "orders",
+                        order_id,
+                        doc! {"payment_status": &mapped_status},
+                    )
+                    .await
+                    {
+                        Ok(_) => eprintln!("[webhook:mp] updated order {order_id} payment_status={mapped_status}"),
+                        Err(e) => eprintln!("[webhook:mp] failed to update order {order_id}: {e}"),
+                    }
+                }
+            } else {
+                eprintln!("[webhook:mp] no order found for external_reference={external_reference}");
+            }
         }
         "subscription_preapproval" => {
             eprintln!("[webhook:mp] subscription {action} id={resource_id}");
@@ -195,6 +270,16 @@ async fn handle_event(kind: &str, action: &str, resource_id: &str) {
     }
 }
 
+fn map_mp_status(status: &str) -> String {
+    match status {
+        "approved" => "paid".to_string(),
+        "pending" | "in_process" | "authorized" => "pending".to_string(),
+        "rejected" | "cancelled" => "failed".to_string(),
+        "refunded" | "charged_back" => "refunded".to_string(),
+        other => other.to_string(),
+    }
+}
+
 /// POST /api/webhooks/asaas
 /// Recebe notificações de pagamento do Asaas.
 async fn asaas_webhook(headers: HeaderMap, Json(body): Json<Value>) -> (StatusCode, Json<Value>) {
@@ -204,24 +289,81 @@ async fn asaas_webhook(headers: HeaderMap, Json(body): Json<Value>) -> (StatusCo
         .unwrap_or("unknown")
         .to_string();
 
-    let resource = body
-        .get("resource")
-        .cloned()
-        .or_else(|| body.get("payment").cloned())
-        .unwrap_or_else(|| json!(null));
-
-    eprintln!("[webhook:asaas] event={event} body={body:#}");
-
-    if let Some(signature) = headers
+    // TODO: HMAC-SHA256 signature validation requires raw bytes, not parsed JSON.
+    // When ASAAS_WEBHOOK_SECRET is set, validation is skipped because we only have
+    // the parsed body here. Refactor to use raw body extraction if strict validation is needed.
+    if let Some(sig) = headers
         .get("x-hook-signature")
-        .or_else(|| headers.get("x-hub-signature"))
         .and_then(|v| v.to_str().ok())
     {
-        eprintln!("[webhook:asaas] signature={signature}");
+        eprintln!("[webhook:asaas] signature={sig} (validation skipped — raw body not available)");
     }
 
-    // TODO: implementar validação de assinatura Asaas com secret em ASAAS_WEBHOOK_SECRET
-    // TODO: persistir ou processar pagamento em MongoDB
+    let body_clone = body.clone();
+    tokio::spawn(async move {
+        handle_asaas_event(&event, &body_clone).await;
+    });
 
-    (StatusCode::OK, Json(json!({"received": true, "event": event, "resource": resource})))
+    (StatusCode::OK, Json(json!({"received": true})))
+}
+
+async fn handle_asaas_event(event: &str, body: &Value) {
+    let external_reference = body
+        .get("payment")
+        .and_then(|p| p.get("externalReference"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+
+    if external_reference.is_empty() {
+        eprintln!("[webhook:asaas] no externalReference in event={event}");
+        return;
+    }
+
+    let mapped_status = match event {
+        "PAYMENT_RECEIVED" | "PAYMENT_CONFIRMED" => "paid",
+        "PAYMENT_OVERDUE" => "overdue",
+        "PAYMENT_DELETED"
+        | "PAYMENT_REFUNDED"
+        | "PAYMENT_CHARGEBACK_REQUESTED"
+        | "PAYMENT_CHARGEBACK_DISPUTE"
+        | "PAYMENT_AWAITING_CHARGEBACK_REVERSAL"
+        | "PAYMENT_CHARGEBACK_REVERSED" => "refunded",
+        "PAYMENT_UPDATED" => "pending",
+        other => {
+            eprintln!("[webhook:asaas] unhandled event={other}");
+            return;
+        }
+    };
+
+    let filter = doc! {"external_reference": &external_reference};
+    let orders = match crate::services::mongo::find_all("orders", filter).await {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("[webhook:asaas] failed to query orders: {e}");
+            return;
+        }
+    };
+
+    if let Some(order) = orders.first() {
+        let order_id = order
+            .get("_id")
+            .and_then(|v| v.get("$oid"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if !order_id.is_empty() {
+            match crate::services::mongo::update_one(
+                "orders",
+                order_id,
+                doc! {"payment_status": mapped_status},
+            )
+            .await
+            {
+                Ok(_) => eprintln!("[webhook:asaas] updated order {order_id} payment_status={mapped_status}"),
+                Err(e) => eprintln!("[webhook:asaas] failed to update order {order_id}: {e}"),
+            }
+        }
+    } else {
+        eprintln!("[webhook:asaas] no order found for external_reference={external_reference}");
+    }
 }

@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod audit_log;
 pub mod cart;
 pub mod cart_item;
@@ -35,4 +36,5 @@ pub fn router() -> Router {
         .nest("/warehouses", warehouse::router())
         .nest("/audit-logs", audit_log::router())
         .nest("/webhooks", webhooks::router())
+        .nest("/admin", admin::router())
 }
