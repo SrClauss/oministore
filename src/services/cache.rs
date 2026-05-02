@@ -44,7 +44,22 @@ pub async fn del(key: &str) {
     let _: Result<(), _> = conn.del(key).await;
 }
 
-/// Invalida todas as chaves que correspondem ao padrão (usa SCAN seguro).
+/// Retorna true se a conexão com o Redis está ativa.
+pub async fn ping() -> bool {
+    let url = env::var("REDIS_URL")
+        .unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+    let Ok(client) = Client::open(url) else {
+        return false;
+    };
+    match ConnectionManager::new(client).await {
+        Ok(mut conn) => redis::cmd("PING")
+            .query_async::<String>(&mut conn)
+            .await
+            .map(|r| r == "PONG")
+            .unwrap_or(false),
+        Err(_) => false,
+    }
+}
 pub async fn del_pattern(pattern: &str) {
     let mut conn = connection().await;
     let mut cursor: u64 = 0;

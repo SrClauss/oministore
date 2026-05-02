@@ -7,12 +7,14 @@ use crate::services::mongo;
 
 #[derive(Deserialize, Serialize)]
 pub struct InventoryFilter {
+    pub product_id: Option<String>,
     pub warehouse_id: Option<String>,
     pub sell_without_stock: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct InventoryPayload {
+    pub product_id: String,
     pub quantity: i64,
     pub reserved: i64,
     pub warehouse_id: String,
@@ -21,6 +23,8 @@ pub struct InventoryPayload {
 
 #[derive(Deserialize, Serialize)]
 pub struct InventoryUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub product_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quantity: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -39,6 +43,9 @@ pub fn router() -> Router {
 
 async fn get_inventorys(Query(filter): Query<InventoryFilter>) -> Json<Value> {
     let mut query = Document::new();
+    if let Some(value) = filter.product_id {
+        query.insert("product_id", value);
+    }
     if let Some(value) = filter.warehouse_id {
         query.insert("warehouse_id", value);
     }

@@ -244,6 +244,10 @@ async fn handle_event(kind: &str, action: &str, resource_id: &str) {
                         Ok(_) => eprintln!("[webhook:mp] updated order {order_id} payment_status={mapped_status}"),
                         Err(e) => eprintln!("[webhook:mp] failed to update order {order_id}: {e}"),
                     }
+
+                    if mapped_status == "paid" {
+                        decrement_inventory_for_order(order).await;
+                    }
                 }
             } else {
                 eprintln!("[webhook:mp] no order found for external_reference={external_reference}");
@@ -266,6 +270,65 @@ async fn handle_event(kind: &str, action: &str, resource_id: &str) {
         }
         other => {
             eprintln!("[webhook:mp] unhandled event type={other} action={action} id={resource_id}");
+        }
+    }
+}
+
+/// Decrementa o estoque para cada item de um pedido confirmado.
+///
+/// Para cada item do pedido com um `product_id`, usa `$inc` para decrementar
+/// atomicamente `quantity` no registro de inventário correspondente.
+/// Se o estoque chegar a zero (ou abaixo) e `sell_without_stock == false`,
+/// marca o produto como inativo.
+async fn decrement_inventory_for_order(order: &Value) {
+    let items = match order.get("items").and_then(Value::as_array) {
+        Some(v) => v.clone(),
+        None => return,
+    };
+
+    for item in &items {
+        let product_id = match item
+            .get("product_id")
+            .and_then(Value::as_str)
+            .map(|s| s.to_string())
+        {
+            Some(id) if !id.is_empty() => id,
+            _ => continue,
+        };
+
+        let qty = item.get("quantity").and_then(Value::as_i64).unwrap_or(1);
+
+        let filter = doc! { "product_id": &product_id };
+        let update = doc! { "$inc": { "quantity": -(qty) } };
+
+        match crate::services::mongo::find_one_and_update_by_filter("inventorys", filter, update).await {
+            Ok(Some(updated)) => {
+                let new_qty = updated.get("quantity").and_then(Value::as_i64).unwrap_or(0);
+                let sell_without_stock = updated
+                    .get("sell_without_stock")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+
+                if new_qty <= 0 && !sell_without_stock {
+                    let prod_filter = doc! { "_id": { "$oid": &product_id } };
+                    let prod_update = doc! { "$set": { "active": false } };
+                    if let Err(e) = crate::services::mongo::find_one_and_update_by_filter(
+                        "products",
+                        prod_filter,
+                        prod_update,
+                    )
+                    .await
+                    {
+                        eprintln!("[webhook] failed to mark product {product_id} as inactive: {e}");
+                    }
+                }
+            }
+            Ok(None) => {
+                eprintln!("[webhook] inventory not found for product_id={product_id}");
+            }
+            Err(e) => {
+                eprintln!("[webhook] failed to decrement inventory for product_id={product_id}: {e}");
+            }
         }
     }
 }
@@ -361,6 +424,10 @@ async fn handle_asaas_event(event: &str, body: &Value) {
             {
                 Ok(_) => eprintln!("[webhook:asaas] updated order {order_id} payment_status={mapped_status}"),
                 Err(e) => eprintln!("[webhook:asaas] failed to update order {order_id}: {e}"),
+            }
+
+            if mapped_status == "paid" {
+                decrement_inventory_for_order(order).await;
             }
         }
     } else {

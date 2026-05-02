@@ -85,6 +85,25 @@ pub async fn delete_one(collection: &str, id: &str) -> Result<u64, String> {
         .map(|result| result.deleted_count)
 }
 
+pub async fn ping() -> bool {
+    database().await.run_command(doc! {"ping": 1}, None).await.is_ok()
+}
+
+pub async fn find_one_and_update_by_filter(
+    collection: &str,
+    filter: Document,
+    update: Document,
+) -> Result<Option<Value>, String> {
+    let coll = database().await.collection::<Document>(collection);
+    let options = FindOneAndUpdateOptions::builder()
+        .return_document(ReturnDocument::After)
+        .build();
+    coll.find_one_and_update(filter, update, options)
+        .await
+        .map_err(|e| e.to_string())
+        .map(|opt| opt.map(doc_to_json))
+}
+
 pub async fn find_paginated(
     collection: &str,
     filter: Document,
