@@ -62,16 +62,28 @@ async fn validate_coupon(Json(payload): Json<CouponValidateRequest>) -> Json<Val
         return Json(json!({ "valid": false, "reason": "coupon is inactive" }));
     }
 
-    // Verifica validade (valid_until como string ISO 8601 ou timestamp)
+    // Verifica validade (valid_until como milissegundos epoch ou string ISO 8601)
     if let Some(valid_until) = coupon.get("valid_until") {
-        let expired = if let Some(date_str) = valid_until
+        let expired = if let Some(ms_str) = valid_until
             .get("$date")
-            .and_then(|d| d.as_str().or_else(|| d.get("$numberLong").and_then(Value::as_str)))
+            .and_then(|d| d.get("$numberLong").and_then(Value::as_str))
         {
-            // Formato BSON ISODate string
-            chrono_expired(date_str)
+            // Formato BSON ISODate armazenado como milliseconds since epoch
+            ms_str
+                .parse::<i64>()
+                .map(|ms| {
+                    use std::time::{SystemTime, UNIX_EPOCH};
+                    let now_ms = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .map(|d| d.as_millis() as i64)
+                        .unwrap_or(i64::MAX);
+                    ms < now_ms
+                })
+                .unwrap_or(false)
         } else if let Some(s) = valid_until.as_str() {
-            chrono_expired(s)
+            // Formato string ISO 8601 (ex: "2025-12-31T23:59:59Z")
+            // ISO 8601 strings are ASCII and sort lexicographically, so byte-slicing is safe.
+            is_iso_date_past(s)
         } else {
             false
         };
@@ -113,34 +125,34 @@ async fn validate_coupon(Json(payload): Json<CouponValidateRequest>) -> Json<Val
     }))
 }
 
-/// Retorna true se a data ISO 8601 já passou (comparação simples por string, funciona para o
-/// formato "YYYY-MM-DDTHH:MM:SS..." já que strings ISO ordenam cronologicamente).
-fn chrono_expired(date_str: &str) -> bool {
+/// Retorna true se a data ISO 8601 já passou.
+///
+/// Compara os primeiros 19 bytes da string ("YYYY-MM-DDTHH:MM:SS") com a data/hora
+/// atual no mesmo formato. ISO 8601 strings são ASCII puro, portanto o slicing em bytes
+/// é seguro.
+fn is_iso_date_past(date_str: &str) -> bool {
     use std::time::{SystemTime, UNIX_EPOCH};
-    // Extrai só os primeiros 19 chars ("YYYY-MM-DDTHH:MM:SS") para comparação lexicográfica
-    let now = SystemTime::now()
+    let now_secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| {
-            let secs = d.as_secs();
-            let dt = secs_to_iso(secs);
-            dt
-        })
-        .unwrap_or_default();
-    let trimmed = &date_str[..date_str.len().min(19)];
-    trimmed < now.as_str()
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let now_iso = secs_to_iso(now_secs);
+    let len = date_str.len().min(19);
+    // ISO 8601 strings are ASCII; byte slicing is safe.
+    let date_prefix = &date_str.as_bytes()[..len];
+    let now_prefix = &now_iso.as_bytes()[..now_iso.len().min(19)];
+    date_prefix < now_prefix
 }
 
-/// Converte Unix timestamp em string ISO 8601 truncada "YYYY-MM-DDTHH:MM:SS".
+/// Converte Unix timestamp (segundos) em string ISO 8601 "YYYY-MM-DDTHH:MM:SS".
+/// Usa o algoritmo civil_from_days de Howard Hinnant.
 fn secs_to_iso(secs: u64) -> String {
-    let s = secs;
-    let mins = s / 60;
-    let hours = mins / 60;
-    let days_total = hours / 24;
-    let sec = s % 60;
-    let min = mins % 60;
-    let hour = hours % 24;
+    let days_total = secs / 86400;
+    let rem = secs % 86400;
+    let hour = rem / 3600;
+    let min = (rem % 3600) / 60;
+    let sec = rem % 60;
 
-    // Algoritmo civil_from_days (algoritmo de Howard Hinnant)
     let z = days_total as i64 + 719468;
     let era = if z >= 0 { z } else { z - 146096 } / 146097;
     let doe = z - era * 146097;
@@ -152,7 +164,7 @@ fn secs_to_iso(secs: u64) -> String {
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
 
-    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}", y, m, d, hour, min, sec)
+    format!("{y:04}-{m:02}-{d:02}T{hour:02}:{min:02}:{sec:02}")
 }
 
 async fn get_coupons(Query(filter): Query<CouponFilter>) -> Json<Value> {

@@ -61,7 +61,11 @@ fn build_cors_layer() -> CorsLayer {
         .split(',')
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
-        .filter_map(|s| s.parse().ok())
+        .filter_map(|s| {
+            s.parse().map_err(|_| {
+                tracing::warn!(origin = %s, "CORS_ORIGINS: invalid origin skipped");
+            }).ok()
+        })
         .collect();
 
     if origins.is_empty() {

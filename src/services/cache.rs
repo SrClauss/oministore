@@ -44,7 +44,9 @@ pub async fn del(key: &str) {
     let _: Result<(), _> = conn.del(key).await;
 }
 
-/// Retorna true se a conexão com o Redis está ativa.
+/// Verifica se o Redis está acessível criando uma conexão temporária.
+/// Uma nova conexão é usada intencionalmente para testar a conectividade real
+/// em vez de reutilizar a conexão poolada (que poderia estar em estado incorreto).
 pub async fn ping() -> bool {
     let url = env::var("REDIS_URL")
         .unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());

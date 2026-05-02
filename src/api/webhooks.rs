@@ -280,6 +280,10 @@ async fn handle_event(kind: &str, action: &str, resource_id: &str) {
 /// atomicamente `quantity` no registro de inventário correspondente.
 /// Se o estoque chegar a zero (ou abaixo) e `sell_without_stock == false`,
 /// marca o produto como inativo.
+///
+/// Falhas parciais (ex: inventário ausente para um item) são registradas mas não
+/// interrompem o processamento dos demais itens do pedido, garantindo que o máximo
+/// possível de estoque seja decrementado mesmo em caso de dados inconsistentes.
 async fn decrement_inventory_for_order(order: &Value) {
     let items = match order.get("items").and_then(Value::as_array) {
         Some(v) => v.clone(),
